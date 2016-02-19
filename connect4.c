@@ -13,7 +13,7 @@ void askUserX(int *userX, char chip);
 void clearGrid(char grid[SIZE_X][SIZE_Y]);
 
 //modifies directs to contain the empty cells surrounding x,y
-void checkChip(char grid[SIZE_X][SIZE_Y], int directs, int x, int y, char chip);
+void checkChip(char grid[SIZE_X][SIZE_Y], int directs[8], int x, int y, char chip);
 
 //modifies x and y based on the direction given
 //1-north, 2-northeast, 3-east, 4-southeast, 5-south, 6-southwest, 7-west, 8-northwest
