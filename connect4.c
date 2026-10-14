@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
 
 #define SIZE_X 9
 #define SIZE_Y 9
@@ -6,7 +8,7 @@
 //diplays the entire grid
 void displayGrid(char grid[SIZE_X][SIZE_Y]);
 
-//ask user for which X to put chip in
+//ask user for which X to put chip in, or set userX to -1 at end of input
 void askUserX(int *userX, char chip);
 
 //fills grid with '-'
@@ -32,7 +34,7 @@ void switchChip(char *chip);
 int main()
 {
 	char grid[SIZE_X][SIZE_Y], chip = 'Y';
-	int userX = 0, lastY = 0;
+	int userX = 0, lastY = 0, moves = 0;
 	
 	printf("Connect four chips and win!\n");
 	printf("Y are yellow chips and R are red chips.\n");
@@ -44,12 +46,21 @@ int main()
 	do {
 		do {
 			askUserX(&userX, chip);
+			if (userX == -1)
+				return 0;
 			lastY = placeChip(grid, userX, chip);
 			displayGrid(grid);
 			if (lastY == -1)
 				printf("The col is full!\n");
 		} while (lastY == -1);
-	} while (checkWin(grid, userX, lastY, &chip));
+		moves++;
+		if (!checkWin(grid, userX, lastY, &chip))
+			break;
+		if (moves == SIZE_X * SIZE_Y) {
+			printf("Draw!\n");
+			return 0;
+		}
+	} while (1);
 
 	printf("%c wins\n", chip);
 
@@ -74,10 +85,25 @@ void displayGrid(char grid[SIZE_X][SIZE_Y])
 
 void askUserX(int *userX, char chip)
 {
-	int tempX = 0;
+	long tempX = 0;
+	char input[64], *end;
+	int next;
 	do {
 		printf("%c turn, enter row: ", chip);
-		scanf("%d", &tempX);
+		if (scanf("%63s", input) != 1) {
+			*userX = -1;
+			return;
+		}
+		tempX = strtol(input, &end, 10);
+		if (*end)
+			tempX = 0;
+		next = getchar();
+		if (next != EOF && !isspace(next)) { //discard the rest of a long input
+			tempX = 0;
+			do {
+				next = getchar();
+			} while (next != EOF && !isspace(next));
+		}
 		printf("\n");
 	} while (tempX <= 0 || tempX > SIZE_X); //makes sure the input is within the bounds of the grid
 	*userX = tempX - 1; //converts human understanding of cols to computer understanding
@@ -95,35 +121,35 @@ void checkChip(char grid[SIZE_X][SIZE_Y], int directs[8], int x, int y, char chi
 {
 	int i = 0;
 
-	if (grid[x][y - 1] == chip) {
+	if (y > 0 && grid[x][y - 1] == chip) {
 		directs[i] = 1; //north
 		i++;
 	}
-	if (grid[x + 1][y - 1] == chip) {
+	if (x + 1 < SIZE_X && y > 0 && grid[x + 1][y - 1] == chip) {
 		directs[i] = 2; //northeast
 		i++;
 	}
-	if (grid[x + 1][y] == chip) {
+	if (x + 1 < SIZE_X && grid[x + 1][y] == chip) {
 		directs[i] = 3; //east
 		i++;
 	}
-	if (grid[x + 1][y + 1] == chip) {
+	if (x + 1 < SIZE_X && y + 1 < SIZE_Y && grid[x + 1][y + 1] == chip) {
 		directs[i] = 4; //southeast
 		i++;
 	}
-	if (grid[x][y + 1] == chip) {
+	if (y + 1 < SIZE_Y && grid[x][y + 1] == chip) {
 		directs[i] = 5; //south
 		i++;
 	}
-	if (grid[x - 1][y + 1] == chip) {
+	if (x > 0 && y + 1 < SIZE_Y && grid[x - 1][y + 1] == chip) {
 		directs[i] = 6; //southwest
 		i++;
 	}
-	if (grid[x - 1][y] == chip) {
+	if (x > 0 && grid[x - 1][y] == chip) {
 		directs[i] = 7; //west
 		i++;
 	}
-	if (grid[x - 1][y - 1] == chip) {
+	if (x > 0 && y > 0 && grid[x - 1][y - 1] == chip) {
 		directs[i] = 8; //northwest
 		i++;
 	}
@@ -195,13 +221,22 @@ int checkWin(char grid[SIZE_X][SIZE_Y], int userX, int lastY, char *chip)
 
 	checkChip(grid, directions, userX, lastY, *chip); //modifies directions to give clear directions
 
-	for (int i = 0; directions[i]; i++) { //stop if direction has zero
-		while (grid[x][y] == *chip) { //checks in a straight line with the directions
+	for (int i = 0; i < 8 && directions[i]; i++) { //stop if direction has zero
+		while (x >= 0 && x < SIZE_X && y >= 0 && y < SIZE_Y && grid[x][y] == *chip) { //checks in a straight line with the directions
 			moveCoord(&x, &y, directions[i]); //move in direction of found chip
 			chipNum++;
 			if (chipNum >= 4) {
 				return 0; //row of 4 found
 			}
+		}
+		x = userX;
+		y = lastY;
+		moveCoord(&x, &y, (directions[i] + 3) % 8 + 1); //check the opposite side too
+		while (x >= 0 && x < SIZE_X && y >= 0 && y < SIZE_Y && grid[x][y] == *chip) {
+			chipNum++;
+			if (chipNum >= 4)
+				return 0;
+			moveCoord(&x, &y, (directions[i] + 3) % 8 + 1);
 		}
 		x = userX; //return to orginial 
 		y = lastY;
